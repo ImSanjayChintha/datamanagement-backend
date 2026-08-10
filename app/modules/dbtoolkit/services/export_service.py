@@ -1,6 +1,6 @@
 """
 Module: toolkit.services.export
-Purpose: Build Excel templates using gateway-registered SQL functions.
+Purpose: Build Excel templates/data dumps using gateway-registered SQL functions.
          Function name comes from api_gateway.endpoints (same pattern as runtime).
 """
 from __future__ import annotations
@@ -39,17 +39,19 @@ def _safe_ident(value: str, kind: str) -> str:
     return value
 
 
-async def build_template(
+def _cell(value: Any) -> Any:
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False)
+    return value
+
+
+async def _call_export_fn(
     db: asyncpg.Connection,
     family_code: str,
     endpoint_path: str,
-) -> tuple[bytes, str]:
-    """
-    Load gateway endpoint → call configured SQL function → build xlsx.
-
-    Both family_code and endpoint_path are required.
-    Returns (xlsx_bytes, filename).
-    """
+) -> dict:
     family_code = (family_code or "").strip()
     if not family_code:
         raise ValueError("family_code is required")
@@ -76,10 +78,12 @@ async def build_template(
     if not row or row["result"] is None:
         raise ValueError("Export function returned no data")
 
-    payload = _as_dict(row["result"])
+    return _as_dict(row["result"])
+
+
+def _headers_from_payload(payload: dict) -> list[str]:
     product_cols = list(payload.get("columns") or [])
     attr_cols = list(payload.get("attribute_columns") or [])
-
     attr_headers = [
         str(c.get("code"))
         for c in attr_cols
@@ -87,9 +91,18 @@ async def build_template(
     ]
     headers = [str(c) for c in product_cols] + attr_headers
     if not headers:
-        raise ValueError("No columns returned for template")
+        raise ValueError("No columns returned for export")
+    return headers
 
-    safe_family = _safe_filename_part(family_code)
+
+async def build_template(
+    db: asyncpg.Connection,
+    family_code: str,
+    endpoint_path: str,
+) -> tuple[bytes, str]:
+    payload = await _call_export_fn(db, family_code, endpoint_path)
+    headers = _headers_from_payload(payload)
+    safe_family = _safe_filename_part(family_code.strip())
 
     wb = Workbook()
     ws = wb.active
@@ -100,4 +113,31 @@ async def build_template(
     wb.save(buf)
 
     filename = f"products-{safe_family}-template.xlsx"
+    return buf.getvalue(), filename
+
+
+async def build_data_export(
+    db: asyncpg.Connection,
+    family_code: str,
+    endpoint_path: str,
+) -> tuple[bytes, str]:
+    payload = await _call_export_fn(db, family_code, endpoint_path)
+    headers = _headers_from_payload(payload)
+    data_rows = list(payload.get("rows") or [])
+    safe_family = _safe_filename_part(family_code.strip())
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = safe_family[:31]
+    ws.append(headers)
+
+    for item in data_rows:
+        if not isinstance(item, dict):
+            item = _as_dict(item)
+        ws.append([_cell(item.get(h)) for h in headers])
+
+    buf = BytesIO()
+    wb.save(buf)
+
+    filename = f"products-{safe_family}-export.xlsx"
     return buf.getvalue(), filename
