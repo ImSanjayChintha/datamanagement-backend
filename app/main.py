@@ -34,7 +34,7 @@ from app.modules.dbtoolkit.routers.activity_log import router as toolkit_activit
 from app.modules.dbtoolkit.routers.page_defs    import router as toolkit_page_defs_router
 
 from app.modules.api_bridge.resources.routers.resources    import router as apib_resources_router
-
+from app.modules.dbtoolkit.routers.export import router as toolkit_export_router
 from app.modules.api_bridge.gateway.routers.endpoints      import router as gw_endpoints_router
 from app.modules.api_bridge.gateway.routers.schema_browser import router as gw_schema_router
 from app.modules.api_bridge.gateway.routers.runtime             import router as gw_runtime_router
@@ -87,6 +87,8 @@ def _get_routers() -> list:
         gw_openapi_router,
         # Push Destinations
         push_dest_router,
+        #Export Template
+        toolkit_export_router
     ]
 
 

@@ -99,6 +99,7 @@ async def upsert_page_def(
     list_endpoint    = (data.get("list_endpoint")   or "").strip()
     upsert_endpoint  = (data.get("upsert_endpoint") or "").strip()
     delete_endpoint  = (data.get("delete_endpoint") or "").strip()
+    export_endpoint  = (data.get("export_endpoint") or "").strip()
 
     if not code:
         raise ValueError("code is required")
