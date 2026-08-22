@@ -44,6 +44,7 @@ from app.modules.api_bridge.gateway.routers.services            import router as
 from app.modules.api_bridge.engine.routers.engine               import router as engine_router
 import app.modules.api_bridge.services.loader  # noqa: F401  — registers all service classes
 from app.modules.push_destinations.routers.destinations import router as push_dest_router
+from app.modules.dbtoolkit.routers.import_jobs import router as toolkit_import_router
 
 def _get_routers() -> list:
     """Return the ordered list of router objects to register.
@@ -307,6 +308,8 @@ def create_app() -> FastAPI:
 
     for router in _get_routers():
         application.include_router(router, prefix=API_V1_PREFIX)
+
+    application.include_router(toolkit_import_router, prefix=API_V1_PREFIX)
 
     # Engine catch-all routes under /api/v1
     application.include_router(engine_router, prefix=API_V1_PREFIX)

@@ -10,7 +10,7 @@ bcrypt==3.2.2
 
 stripe==9.9.0
 typesense==0.21.0
-
+psycopg2-binary
 celery[redis]==5.4.0
 redis==5.0.4
 
