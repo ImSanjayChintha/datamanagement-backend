@@ -69,5 +69,17 @@ class Settings:
     SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "CoreX Platform")
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
+    # Product import pipeline (DuckDB intermediate + chunked Celery processing)
+    IMPORT_STORAGE_DIR: str = os.getenv(
+        "IMPORT_STORAGE_DIR",
+        os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "storage", "imports")),
+    )
+    IMPORT_CHUNK_SIZE: int = int(os.getenv("IMPORT_CHUNK_SIZE", "100000"))
+    IMPORT_MAX_WORKERS: int = int(os.getenv("IMPORT_MAX_WORKERS", "4"))
+    IMPORT_MAX_PENDING_CHUNKS: int = int(os.getenv("IMPORT_MAX_PENDING_CHUNKS", "4"))
+    IMPORT_DUCKDB_THREADS: int = int(os.getenv("IMPORT_DUCKDB_THREADS", "4"))
+    IMPORT_DUCKDB_MEMORY_LIMIT: str = os.getenv("IMPORT_DUCKDB_MEMORY_LIMIT", "4GB")
+    IMPORT_SP_BATCH_SIZE: int = int(os.getenv("IMPORT_SP_BATCH_SIZE", "5000"))
+
 
 settings = Settings()

@@ -1,34 +1,49 @@
-import json
-import psycopg2
-from psycopg2.extras import RealDictCursor
+"""
+Celery task: process one import job by id only (no rows / file bytes in Redis).
+"""
+from __future__ import annotations
+
+import logging
+import traceback
 
 from app.core.celery_app import celery_app
-from app.core.config import settings
+from app.modules.dbtoolkit.import_pipeline import (
+    get_job,
+    mark_failed,
+    run_import_ingestion,
+    storage,
+    update_job_status,
+)
 
-
-def _sync_dsn() -> str:
-    # DATABASE_URL is asyncpg style: postgresql://...
-    return settings.DATABASE_URL  # works with psycopg2 if scheme is postgresql://
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(bind=True, name="pim.import_products")
-def import_products_task(self, family_code: str, rows: list, audit_user: str | None):
-    payload = [{"family_code": family_code, "rows": rows}]
-    conn = psycopg2.connect(_sync_dsn())
+def import_products_task(self, job_id: str):
+    """
+    Celery payload is job_id only. Rows live on disk; progress in toolkit.import_jobs.
+    On success the job storage folder is deleted (JSONL + DuckDB).
+    """
+    job = get_job(job_id)
+    if not job:
+        raise ValueError(f"import job not found: {job_id}")
+
     try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT pim.fn_import_products(%s::jsonb, %s) AS result",
-                [json.dumps(payload), audit_user],
-            )
-            row = cur.fetchone()
-            conn.commit()
-            result = row["result"]
-            if isinstance(result, str):
-                result = json.loads(result)
-            return {"ok": True, "job_id": self.request.id, **(result or {})}
-    except Exception as e:
-        conn.rollback()
+        update_job_status(job_id, "processing")
+        result = run_import_ingestion(job)
+        update_job_status(
+            job_id,
+            "completed",
+            metrics={
+                **(result.get("duckdb") or {}),
+                "stored_procedure": result.get("stored_procedure"),
+            },
+        )
+        # DuckDB connection is closed inside run_import_ingestion; safe to wipe disk.
+        storage.cleanup_job_dir(job_id)
+        logger.info("import job completed job_id=%s", job_id)
+        return result
+    except Exception as exc:
+        logger.exception("import job failed job_id=%s", job_id)
+        mark_failed(job_id, f"{exc}\n{traceback.format_exc()[-1500:]}")
         raise
-    finally:
-        conn.close()
