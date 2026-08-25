@@ -17,6 +17,7 @@ def test_build_completed_event():
         "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
         "user_id": 9,
         "status": "completed",
+        "job_type": "import",
         "file_name": "rows.jsonl",
         "family_code": "adapters",
         "source_rows": 100,
@@ -31,6 +32,24 @@ def test_build_completed_event():
     assert ev["status"] == "completed"
     assert ev["success_rows"] == 98
     assert ev["failed_rows"] == 2
+
+
+def test_build_export_template_completed_event():
+    job = {
+        "id": "cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "user_id": 2,
+        "status": "completed",
+        "job_type": "export_template",
+        "file_name": "products-x-template.xlsx",
+        "result_file_path": "/tmp/x.xlsx",
+        "rows_written": 0,
+        "rows_invalid": 0,
+        "metrics": {},
+    }
+    ev = build_terminal_event(job)
+    assert ev["event"] == "EXPORT_TEMPLATE_COMPLETED"
+    assert ev["download_ready"] is True
+    assert ev["job_type"] == "export_template"
 
 
 def test_build_failed_event():

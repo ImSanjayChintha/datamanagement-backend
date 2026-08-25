@@ -21,4 +21,7 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True,
 )
 celery_app.autodiscover_tasks(["app.modules.dbtoolkit"])
-celery_app.conf.imports = ("app.modules.dbtoolkit.tasks.import_tasks",)
+celery_app.conf.imports = (
+    "app.modules.dbtoolkit.tasks.import_tasks",
+    "app.modules.dbtoolkit.tasks.export_tasks",
+)

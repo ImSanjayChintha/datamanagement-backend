@@ -50,6 +50,14 @@ def write_rows_jsonl(
     return str(dest.resolve()), count
 
 
+def write_bytes(job_id: str | uuid.UUID, file_name: str, content: bytes) -> str:
+    """Write binary artifact (e.g. xlsx). Returns absolute path."""
+    dest = job_dir(job_id) / file_name
+    dest.write_bytes(content)
+    logger.info("job storage wrote %s bytes → %s", len(content), dest)
+    return str(dest.resolve())
+
+
 def duckdb_path(job_id: str | uuid.UUID) -> Path:
     return job_dir(job_id) / "ingest.duckdb"
 

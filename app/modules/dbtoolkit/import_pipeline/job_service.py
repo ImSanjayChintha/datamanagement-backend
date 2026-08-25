@@ -37,14 +37,17 @@ def create_job(
     inserted_by: str | None,
     user_id: int | None,
     celery_task_id: str | None = None,
+    job_type: str = "import",
+    entity: str = "products",
+    endpoint_path: str | None = None,
 ) -> dict[str, Any]:
     sql = """
         INSERT INTO toolkit.import_jobs (
-            id, entity, family_code, file_name, file_path, file_id,
-            status, source_rows, inserted_by, user_id, celery_task_id
+            id, entity, job_type, family_code, file_name, file_path, file_id,
+            status, source_rows, inserted_by, user_id, celery_task_id, endpoint_path
         ) VALUES (
-            %s, 'products', %s, %s, %s, %s,
-            'queued', %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s, %s,
+            'queued', %s, %s, %s, %s, %s
         )
         RETURNING *
     """
@@ -54,6 +57,8 @@ def create_job(
                 sql,
                 (
                     job_id,
+                    entity,
+                    job_type,
                     family_code,
                     file_name,
                     file_path,
@@ -62,17 +67,48 @@ def create_job(
                     inserted_by,
                     user_id,
                     celery_task_id,
+                    endpoint_path,
                 ),
             )
             row = dict(cur.fetchone())
         conn.commit()
     logger.info(
-        "import job created job_id=%s user_id=%s status=queued source_rows=%s",
+        "job created job_id=%s job_type=%s user_id=%s status=queued",
         job_id,
+        job_type,
         user_id,
-        source_rows,
     )
     return row
+
+
+def set_result_file(
+    job_id: str | uuid.UUID,
+    *,
+    result_file_path: str,
+    file_name: str,
+    rows_written: int | None = None,
+) -> None:
+    sets = [
+        "result_file_path = %s",
+        "file_name = %s",
+        "file_path = %s",
+        "modified_at = %s",
+    ]
+    args: list[Any] = [
+        result_file_path,
+        file_name,
+        result_file_path,
+        datetime.now(timezone.utc),
+    ]
+    if rows_written is not None:
+        sets.append("rows_written = %s")
+        args.append(rows_written)
+    args.append(str(job_id))
+    sql = f"UPDATE toolkit.import_jobs SET {', '.join(sets)} WHERE id = %s"
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, args)
+        conn.commit()
 
 
 def get_job(job_id: str | uuid.UUID) -> dict[str, Any] | None:
