@@ -14,6 +14,22 @@ import asyncpg
 from openpyxl import Workbook
 
 from app.modules.api_bridge.gateway.runtime.executor import load_endpoint
+from app.modules.dbtoolkit.core.constants import AUDIT_FIELD_CODES
+
+# Columns users must not fill on download-template / should not re-import by hand.
+# Includes classic audit cols plus product lifecycle timestamps managed by the system.
+_PRODUCT_TEMPLATE_SKIP: frozenset[str] = frozenset(
+    set(AUDIT_FIELD_CODES)
+    | {
+        "id",
+        "values",
+        "family_code",  # family is chosen in UI / passed separately
+        "launched_at",
+        "discontinued_at",
+        "created_at",
+        "updated_at",
+    }
+)
 
 
 def _as_dict(value: Any) -> dict:
@@ -82,14 +98,18 @@ async def _call_export_fn(
 
 
 def _headers_from_payload(payload: dict) -> list[str]:
-    product_cols = list(payload.get("columns") or [])
+    product_cols = [
+        str(c)
+        for c in (payload.get("columns") or [])
+        if str(c) not in _PRODUCT_TEMPLATE_SKIP
+    ]
     attr_cols = list(payload.get("attribute_columns") or [])
     attr_headers = [
         str(c.get("code"))
         for c in attr_cols
-        if isinstance(c, dict) and c.get("code")
+        if isinstance(c, dict) and c.get("code") and str(c.get("code")) not in _PRODUCT_TEMPLATE_SKIP
     ]
-    headers = [str(c) for c in product_cols] + attr_headers
+    headers = product_cols + attr_headers
     if not headers:
         raise ValueError("No columns returned for export")
     return headers

@@ -7,6 +7,7 @@ from app.modules.dbtoolkit.import_pipeline.ingestion_service import run_import_i
 from app.modules.dbtoolkit.import_pipeline.job_service import (
     create_job,
     get_job,
+    list_jobs_for_user,
     mark_failed,
     update_job_status,
 )
@@ -14,6 +15,7 @@ from app.modules.dbtoolkit.import_pipeline.job_service import (
 __all__ = [
     "create_job",
     "get_job",
+    "list_jobs_for_user",
     "mark_failed",
     "update_job_status",
     "run_import_ingestion",
