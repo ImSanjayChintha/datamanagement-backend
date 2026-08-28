@@ -42,8 +42,12 @@ class Settings:
     TYPESENSE_API_KEY: str = os.getenv("TYPESENSE_API_KEY", "xyz")
     STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
     STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change-me-in-production")
-    JWT_ALGORITHM: str = "HS256"
+    JWT_SECRET_KEY: str = (
+        os.getenv("JWT_SECRET_KEY")
+        or os.getenv("SECRET_KEY")
+        or "change-me-in-production"
+    )
+    JWT_ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
     MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT", "minio:9000")
@@ -69,17 +73,8 @@ class Settings:
     SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "CoreX Platform")
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
-    # Product import pipeline (DuckDB intermediate + chunked Celery processing)
-    IMPORT_STORAGE_DIR: str = os.getenv(
-        "IMPORT_STORAGE_DIR",
-        os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "storage", "imports")),
-    )
-    IMPORT_CHUNK_SIZE: int = int(os.getenv("IMPORT_CHUNK_SIZE", "100000"))
-    IMPORT_MAX_WORKERS: int = int(os.getenv("IMPORT_MAX_WORKERS", "4"))
-    IMPORT_MAX_PENDING_CHUNKS: int = int(os.getenv("IMPORT_MAX_PENDING_CHUNKS", "4"))
-    IMPORT_DUCKDB_THREADS: int = int(os.getenv("IMPORT_DUCKDB_THREADS", "4"))
-    IMPORT_DUCKDB_MEMORY_LIMIT: str = os.getenv("IMPORT_DUCKDB_MEMORY_LIMIT", "4GB")
-    IMPORT_SP_BATCH_SIZE: int = int(os.getenv("IMPORT_SP_BATCH_SIZE", "5000"))
+    # Product import/export/template jobs run in jobs-service; backend proxies the HTTP API.
+    JOBS_SERVICE_URL: str = os.getenv("JOBS_SERVICE_URL", "http://localhost:8001")
 
 
 settings = Settings()
